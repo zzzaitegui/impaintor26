@@ -5,12 +5,17 @@ import com.impaintor.feature.game.service.GameService;
 import com.impaintor.feature.room.models.Room;
 import com.impaintor.feature.room.utilities.RandomGenerations;
 import com.impaintor.feature.user.models.User;
+import com.impaintor.feature.user.repository.UserRepository;
+import com.impaintor.feature.auth.config.AppUserDetails;
 
 import java.util.Optional;
+import java.util.ArrayList;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -23,7 +28,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
 @RestController
-@RequestMapping("api/rooms")
+@RequestMapping("/api/rooms")
 public class RoomController {
 
     @Autowired
@@ -35,8 +40,26 @@ public class RoomController {
     @Autowired
     private GameService gameService;
 
+    @Autowired
+    private UserRepository userRepository;
+
+    public static record CreateRoomRequest(Integer drawingTime, Integer impostorLives) {}
+
     @PostMapping("/create")
-    public ResponseEntity<?> createRoom() {
+    public ResponseEntity<?> createRoom(
+            @AuthenticationPrincipal AppUserDetails currentUser,
+            @RequestBody(required = false) CreateRoomRequest request) {
+        if (currentUser == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Usuario no autenticado");
+        }
+
+        Optional<User> oUser = userRepository.findById(currentUser.getId());
+        if (oUser.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Usuario no encontrado");
+        }
+
+        User user = oUser.get();
+
         Room room = new Room();
 
         Long seed = RandomGenerations.RoomRandomId();
@@ -45,13 +68,34 @@ public class RoomController {
         room.setRoomCode(codigoFinal);
         room.setMode(Room.Mode.CUSTOM);
         room.setGameState(Room.GameState.WAITING);
+        room.getPlayersNames().add(user);
+
+        if (request != null) {
+            if (request.drawingTime() != null) {
+                room.setDrawTime(request.drawingTime());
+            }
+            if (request.impostorLives() != null) {
+                room.setImpostorTries(request.impostorLives());
+            }
+        }
 
         Room saved = roomRepository.save(room);
         return ResponseEntity.ok(saved);
     }
 
     @PostMapping("/{code}/join")
-    public ResponseEntity<?> joinRoom(@PathVariable String code, @RequestBody User user) {
+    public ResponseEntity<?> joinRoom(@PathVariable String code, @AuthenticationPrincipal AppUserDetails currentUser) {
+        if (currentUser == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Usuario no autenticado");
+        }
+
+        Optional<User> oUser = userRepository.findById(currentUser.getId());
+        if (oUser.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Usuario no encontrado");
+        }
+
+        User user = oUser.get();
+
         Optional<Room> oRoom = roomRepository.findByRoomCode(code);
         if (oRoom.isEmpty()) {
             return ResponseEntity.notFound().build();
@@ -76,7 +120,18 @@ public class RoomController {
     }
 
     @PostMapping("/{code}/leave")
-    public ResponseEntity<?> leaveRoom(@PathVariable String code, @RequestBody User user) {
+    public ResponseEntity<?> leaveRoom(@PathVariable String code, @AuthenticationPrincipal AppUserDetails currentUser) {
+        if (currentUser == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Usuario no autenticado");
+        }
+
+        Optional<User> oUser = userRepository.findById(currentUser.getId());
+        if (oUser.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Usuario no encontrado");
+        }
+
+        User user = oUser.get();
+
         Optional<Room> oRoom = roomRepository.findByRoomCode(code);
 
         if (oRoom.isEmpty()) {

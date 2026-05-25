@@ -68,10 +68,23 @@ export class Lobby implements OnInit, OnDestroy {
       next: (room) => {
         if (room.size) this.roomSize.set(room.size);
 
-        // Map backend User objects to lobby Player interface
+        // Map backend User objects to lobby Player interface, marking index 0 as host
         this.players.set(
-          room.playersNames.map(u => ({ username: u.username, isHost: false }))
+          room.playersNames.map((u, index) => ({ username: u.username, isHost: index === 0 }))
         );
+
+        if (room.drawTime || room.impostorTries) {
+          this.roomConfig.set({
+            drawingTime: room.drawTime || 30,
+            impostorLives: room.impostorTries || 1
+          });
+        }
+
+        const currentUsername = localStorage.getItem('username') || '';
+        const hostPlayer = this.players().find(p => p.isHost);
+        if (hostPlayer && hostPlayer.username === currentUsername) {
+          this.isHost.set(true);
+        }
 
         if (room.mode === 'RANKED') {
           this.isRanked.set(true);
@@ -155,7 +168,12 @@ export class Lobby implements OnInit, OnDestroy {
   // Custom room: host starts manually
   startGame() {
     if (this.isHost()) {
-      this.wsService.send(`/app/room.${this.roomCode}.start`, {});
+      this.http.post(`/api/rooms/${this.roomCode}/start`, {}).subscribe({
+        error: (err: any) => {
+          console.error('Error starting game:', err);
+          alert(err.error || 'Error al iniciar la partida / Error starting game');
+        }
+      });
     }
   }
 

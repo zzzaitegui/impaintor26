@@ -23,21 +23,20 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(AbstractHttpConfigurer::disable)
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**").permitAll()
-                // El handshake HTTP del WebSocket no pasa por filtros de auth — el JWT
-                // se valida en el frame STOMP CONNECT (ver Track D, JwtChannelInterceptor).
-                .requestMatchers("/ws/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/users/leaderboard").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/users/me").authenticated()
-                .requestMatchers(HttpMethod.PUT, "/api/users/me").authenticated()
-                .requestMatchers(HttpMethod.DELETE, "/api/users/me").authenticated()
-                .requestMatchers(HttpMethod.GET, "/api/users/*").permitAll()
-                .anyRequest().authenticated()
-            )
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .csrf(AbstractHttpConfigurer::disable)
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/auth/**").permitAll()
+                        // El handshake HTTP del WebSocket no pasa por filtros de auth — el JWT
+                        // se valida en el frame STOMP CONNECT (ver Track D, JwtChannelInterceptor).
+                        .requestMatchers("/ws/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/users/leaderboard").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/users/me").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/users/me").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/users/me").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/users/*").permitAll()
+                        .anyRequest().authenticated())
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

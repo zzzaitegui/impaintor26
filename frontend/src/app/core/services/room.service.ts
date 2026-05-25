@@ -20,7 +20,7 @@ export class RoomService {
   private apiUrl = '/api/rooms';
 
   createRoom(config: RoomConfig): Observable<CreateRoomResponse> {
-    return this.http.post<CreateRoomResponse>(this.apiUrl, config);
+    return this.http.post<CreateRoomResponse>(`${this.apiUrl}/create`, config);
   }
 
   joinRoom(roomCode: string): Observable<void> {
