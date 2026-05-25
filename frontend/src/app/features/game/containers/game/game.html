@@ -1,0 +1,71 @@
+@if (notAuthenticated) {
+  <div class="not-auth" data-testid="not-auth">
+    <h2>No autenticado</h2>
+    <p>Necesitas iniciar sesión para entrar a una sala de juego.</p>
+    <p><em>(O añade <code>?dev=true</code> a la URL para entrar en modo demo.)</em></p>
+  </div>
+} @else {
+  @if (devMode) {
+    <div class="dev-banner">
+      🛠️ MODO DEV
+      @if (gameState.isImpostor()) {
+        — Rol: <strong>IMPOSTOR</strong> · Pista: <strong>{{ gameState.hint() }}</strong>
+      } @else {
+        — Rol: <strong>PINTOR</strong>
+        · <a class="dev-link" href="?dev=true&role=impostor">Cambiar a impostor →</a>
+      }
+    </div>
+  }
+
+  @switch (gameState.phase()) {
+    @case ('CONNECTING') {
+      <div class="connecting"><h2>Conectando…</h2></div>
+    }
+    @case ('DRAWING') {
+      <app-drawing-phase-view
+        [state]="gameState.state()"
+        [myPlayerId]="myPlayerId"
+        (drawCommand)="sendDraw($event)"
+        (guessSubmitted)="sendGuess($event)"
+      />
+    }
+    @case ('GALLERY') {
+      <app-gallery-view [state]="gameState.state()" />
+    }
+    @case ('VOTING') {
+      <app-voting-view
+        [state]="gameState.state()"
+        [myPlayerId]="myPlayerId"
+        (voteCast)="sendVote($event)"
+      />
+    }
+    @case ('TIE_BREAK') {
+      <app-tie-break-view
+        [state]="gameState.state()"
+        [myPlayerId]="myPlayerId"
+        (voteMoved)="sendVoteMove($event)"
+      />
+    }
+    @case ('RESULT') {
+      <app-vote-result-view [state]="gameState.state()" />
+    }
+    @case ('OVER') {
+      <app-game-over-view
+        [state]="gameState.state()"
+        (playAgain)="onPlayAgain()"
+      />
+    }
+  }
+
+  <!--
+    2I.8 — UI flotante del impostor.
+    La visibilidad se calcula aquí en el padre con signals directas del GameStateService,
+    evitando problemas de hydration SSR. Los valores se pasan como @Input al componente.
+  -->
+  <app-impostor-overlay
+    [visible]="isOverlayVisible()"
+    [hint]="gameState.hint()"
+    [lives]="gameState.impostorLives()"
+    (guessSubmitted)="sendGuess($event)"
+  />
+}
